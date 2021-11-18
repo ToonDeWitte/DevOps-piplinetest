@@ -1,0 +1,95 @@
+﻿@page "/artists/{id:int}"
+<!--AUTH-->
+@attribute [AllowAnonymous]
+@inject PublicClient httpClient
+
+
+@if (kunst == null)
+{
+    // <LoadingSpinner />
+    <p>Loading...</p>
+}
+else
+{
+    
+<div class="container" style="margin:0">
+    <div class="row">
+        <div class="col-md-1 col-5">
+            <div style="padding-bottom:10px">
+                <div class="rounded-circle image">
+                    <img src="/images/@kunst.Fotopad" alt="" />
+                </div>
+                <p style="display:inline-block">@kunst.Gebruikersnaam</p>
+            </div>
+        </div></div>
+</div>
+    <div class="container" style="margin-left: 0px">
+        <div class="row">
+            <div class="col-md-4">
+                <text>
+                    @kunst.Details
+
+                </text>
+            </div>
+            <div class="col-md-8">
+                <div class="row">
+                    <div class="container testimonial-group " style="padding-left:20px; padding-top:20px">
+                        <div class="row text-center">
+                            @if (kunst.Kunstwerken.Count != 0)
+                            {
+                                @foreach (Kunstwerk_DTO.Index k in kunst.Kunstwerken)
+                                {
+                                    <a href="artworks/@k.Id" style="text-decoration:none">
+                                        <div class="col-4">
+                                            <img src="/images/@k.Fotos.FirstOrDefault().Pad" width="250" />
+
+                                            <p style=" width:100%; height: auto">@k.Naam</p>
+                                            <p style=" width:100%; height:auto">€@k.Prijs</p>
+                                        </div>
+                                    </a>
+                                }
+                            }
+                            else
+                            {
+                                <p>No artworks found</p>
+                            }
+
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    @code {
+        [Parameter] public int Id { get; set; }
+private Kunstenaar_DTO kunst;
+    //private List<Kunstwerk_DTO.Index> kunstwerken;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        kunst = await httpClient.Client.GetFromJsonAsync<Kunstenaar_DTO>($"api/Kunstenaar/{Id}");
+        //Console.WriteLine(kunst.Fotopad);
+        // Console.WriteLine(kunst.Kunstwerken.Count());
+
+        //-----
+        //kunstwerken = await httpClient.GetFromJsonAsync<List<Kunstwerk_DTO.Index>>("api/Kunstwerk");
+        //kunstwerken.Where(x=>x.KunstenaarGebruikerId == kunst.GebruikerId)
+    }
+    }

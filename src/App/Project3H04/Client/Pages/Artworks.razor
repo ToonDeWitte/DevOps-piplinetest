@@ -1,0 +1,191 @@
+﻿@page "/artworks"
+<!--AUTH-->
+@attribute [AllowAnonymous]
+<!--=> Deze http PublicClient gebruiken voor Anonymous-->
+@inject PublicClient httpClient
+
+<body>
+    <div class="container">
+        <p class="black-style" style="padding-left:25em;justify-content:left;">Artworks</p>
+        <div class="row">
+            <div class="filter-container">
+                <div class="col-md-12 col-lg-10 col-xl-10">
+                    <ul>
+                        <li>
+                            <input type="checkbox" checked>
+                            <i></i>
+                            <h2>Artists</h2>
+                            <div class="checkbox">
+                                <input type="search" style="width:100%" placeholder="Artist Name" value="@searchtermartist" @onchange="_ => SearchArt(_,searchtermArtist:true)" />
+                            </div>
+                        </li>
+                        <li>
+                            <input type="checkbox" checked>
+                            <i></i>
+                            <h2>Artworks</h2>
+                            <div class="checkbox">
+                                <input type="search" style="width:100%" placeholder="Artwork Name" value="@searchtermartwork" @onchange="_ => SearchArt(_,searchtermArtwork:true)" />
+                            </div>
+                        </li>
+                        <li>
+                            <input type="checkbox" checked>
+                            <i></i>
+                            <h2>Medium</h2>
+                            <div class="checkbox">
+                                @if (kunstwerken != null)
+                                {
+                                    @foreach (var medium in artMediums)
+                                    {
+                                        <div class="form-check">
+
+                                            <input class="form-check-input" type="checkbox" value="@medium" name="material-checkbox" id="@medium" @onchange="_ => SearchArt(_,filterValue:medium)">
+                                            <label class="form-check-label">
+                                                @medium
+                                            </label>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </li>
+                        <li>
+                            <input type="checkbox" checked>
+                            <i></i>
+                            <h2>Ways to buy</h2>
+                            <div class="checkbox">
+
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="bid" name="pay-checkbox" id="flexCheckDefault">
+                                    <label class="form-check-label" for="flexCheckDefault">
+                                        Bid
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="buy" name="pay-checkbox" id="flexCheckDefault">
+                                    <label class="form-check-label" for="flexCheckDefault">
+                                        Buy now
+                                    </label>
+                                </div>
+
+                            </div>
+                        </li>
+                        <li>
+                            <input type="checkbox" checked>
+                            <i></i>
+                            <h2>Price</h2>
+                            <div class="checkbox">
+                                <input type="search" placeholder="low" value="@searchtermartist" @onchange="_ => SearchArt(_,searchtermPriceLow:true)" />  to
+                                <input type="search" placeholder="high" value="@searchtermartist" @onchange="_ => SearchArt(_,searchtermPriceHigh:true)" />
+                            </div>
+                        </li>
+                        <li>
+                            <input type="checkbox" checked>
+                            <i></i>
+                            <h2>Size</h2>
+                            <div class="checkbox">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="size-checkbox" value="small" id="small">
+                                    <label class="form-check-label" for="small">
+                                        Small (under 50cm)
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="size-checkbox" value="medium" id="medium">
+                                    <label class="form-check-label" for="medium">
+                                        Medium (50 - 100cm)
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="size-checkbox" value="large" id="large">
+                                    <label class="form-check-label" for="large">
+                                        Large (over 100cm)
+                                    </label>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col">
+                <div class="row">
+                    @if (kunstwerken != null)
+                    {
+                        @foreach (var kunst in kunstwerken)
+                        {
+                            <div class="col-md-12 col-lg-6">
+                                <a href="artworks/@kunst.Id" style="text-decoration:none">
+
+                                    <img src="/images/@kunst.Fotos.First().Pad" alt="" style="width:100%" />
+                                    <div class="artwork-text">
+                                        <p class="artistname">@kunst.Kunstenaar.Gebruikersnaam</p>
+                                        <p class="artwork">@kunst.Naam</p>
+                                        <p class="price">€@kunst.Prijs</p>
+
+                                    </div>
+
+                                </a>
+                            </div>
+
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+@code {
+    private string searchtermartwork = "";
+    private string searchtermartist = "";
+    private decimal searchtermpricelow = default(decimal);
+    private decimal searchtermpricehigh = default(decimal);
+    public IEnumerable<string> artMediums;
+    private List<String> selectedItems = new();
+    private List<Kunstwerk_DTO.Index> kunstwerken;
+    private List<Kunstwerk_DTO.Index> kunstCopy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        //kunstwerken = await httpClient.GetFromJsonAsync<List<Kunstwerk_DTO.Index>>($"api/Kunstwerk?term={searchterm}");
+        kunstwerken = await httpClient.Client.GetFromJsonAsync<List<Kunstwerk_DTO.Index>>($"api/Kunstwerk");
+        kunstCopy = kunstwerken;
+        //vul artMediums met alle mogelijke mediums van kunstwerken
+        artMediums = kunstCopy.Select(x => x.Materiaal).Distinct();
+    }
+
+    private async Task SearchArt(ChangeEventArgs args, bool searchtermArtist = false, bool searchtermArtwork = false, bool searchtermPriceLow = false, bool searchtermPriceHigh = false, string filterValue = "x")
+    {
+        if (filterValue != "x")
+        {
+            if (!selectedItems.Contains(filterValue))
+                selectedItems.Add(filterValue);
+            else selectedItems.Remove(filterValue);
+
+        }
+
+        if (searchtermArtwork)
+        {
+            searchtermartwork = args.Value.ToString();
+        }
+        if (searchtermArtist)
+        {
+            searchtermartist = args.Value.ToString();
+        }
+        //Decimal.TryParse: First parameter is interpreted, second parameter is returned with the result Decimal is true
+        if (searchtermPriceLow && Decimal.TryParse(args.Value.ToString(), out searchtermpricelow)) ;
+
+        //Decimal.TryParse: First parameter is interpreted, second parameter is returned with the result Decimal is true
+        if (searchtermPriceHigh && Decimal.TryParse(args.Value.ToString(), out searchtermpricehigh)) ;
+
+        string queryStringFilter = "";
+        foreach (string s in selectedItems)
+        {
+            queryStringFilter += "filters=" + s + "&";
+        }
+
+        kunstwerken = await httpClient.Client.GetFromJsonAsync<List<Kunstwerk_DTO.Index>>($"api/Kunstwerk?termArtwork={searchtermartwork}&termArtist={searchtermartist}&termMinimumPrice={searchtermpricelow}&termMaximumPrice={searchtermpricehigh}&{queryStringFilter}");
+
+
+    }
+
+}

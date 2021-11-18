@@ -1,0 +1,163 @@
+@inject HttpClient httpClient
+@inject NavigationManager NavManager
+
+
+@if (Model != null)
+{
+    <div class="main">
+        <EditForm Model="@Model" OnValidSubmit="@Submit">
+            <!--<FluentValidationValidator />-->
+            <ValidationSummary />
+            <div class="form-group">
+                <label for="@Model.Naam">Name</label>
+                <InputText @bind-Value="@Model.Naam" class="form-control" />
+            </div>
+            <!--Fotos-->
+            <div class="form-group">
+                <label>Pictures: </label>
+                <InputFile OnChange="@OnInputFileChange" multiple />
+                <div>
+                    @foreach (var foto in Model.Fotos)
+                    {
+                        <div class="form-control-file">
+                            <img src="/images/@foto.Pad" alt="@foto.Pad" width="250" height="250" style="padding-right:20px;" />
+
+                            <button type="button" class="btn btn-danger" @onclick="() => RemoveImage(foto)">Verwijder</button>
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="form-group">
+                <label>
+                    For Sale
+                    <InputCheckbox @bind-Value="@Model.TeKoop" />
+                </label>
+            </div>
+            @if (Model.TeKoop)
+            {
+                <div class="form-group">
+                    @if (Model.IsVeilbaar)
+                    {<label for="@Model.Prijs">StartingPrice </label> }
+                    else
+                    { <label for="@Model.Prijs">Price </label>}
+                    <InputNumber @bind-Value="@Model.Prijs" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>
+                        Sell by auction?
+                        <InputCheckbox @bind-Value="@Model.IsVeilbaar" />
+                    </label>
+                </div>
+            }
+        <div class="form-group">
+            <label for="materiaalInput">Material</label>
+            <input id="materiaalInput" @bind-value="@Model.Materiaal" list="materiaalId" class="form-control" />
+            <datalist id="materiaalId">
+                @foreach (var materiaal in _materialen)
+                {
+                    <option value="@materiaal"></option>
+                }
+            </datalist>
+
+
+        </div>
+            <div class="form-group">
+                <label for="@Model.Beschrijving">Description</label>
+                <InputTextArea @bind-Value="@Model.Beschrijving" class="form-control" />
+            </div>
+            <button type="submit" class="btn btn-primary">
+                Confirm
+            </button>
+            <a class="btn btn-secondary" href="/">Cancel</a>
+
+        </EditForm>
+    </div>
+}
+else
+{
+    <!--<LoadingSpinner />-->
+}
+
+
+
+@code{
+    //parameter zodat we het ook als Edit formulier kunnen gebruiken
+    [Parameter] public Kunstwerk_DTO.Create Model { get; set; }
+
+    private IList<string> _materialen = new List<string> //voorlopig nog hardgecodeerd, zou API call moeten zijn naar meest voorkomende materialen
+    {
+        "Wood",
+        "Metal",
+        "Plastic",
+        "Paper",
+        "Other"
+    };
+
+    protected override void OnInitialized()
+    {
+        if (Model == null) //in dit geval werkt het als een Create formulier
+        {
+            Model = new();
+        } 
+    }
+
+    public async Task Submit()
+    {
+        if (!Model.TeKoop)
+        {
+            Model.IsVeilbaar = false; //als het niet te koop is is het ook niet per opbod te koop
+            Model.Prijs = 0; //prijs zou nutteloos zijn als het niet te koop is
+        }
+
+        #region Debug (mag weg opzich)
+        Console.WriteLine("Naam: " + Model.Naam);
+        Console.WriteLine("Te koop? " + Model.TeKoop);
+        Console.WriteLine("Veilbaar? " + Model.IsVeilbaar);
+
+        Console.WriteLine("Prijs: " + Model.Prijs);
+        Console.WriteLine(Model.Materiaal);
+        Console.WriteLine(Model.Beschrijving);
+        foreach (var foto in Model.Fotos)
+        {
+            Console.WriteLine("Foto: " + foto.Pad);
+        }
+        #endregion
+
+        if (Model is Kunstwerk_DTO.Edit)
+        {
+            //API call "PUT"
+            Kunstwerk_DTO.Edit model = (Kunstwerk_DTO.Edit) Model;
+            var response = await httpClient.PutAsJsonAsync<Kunstwerk_DTO.Edit>($"api/kunstwerk/{model.Id}", model);
+            response.EnsureSuccessStatusCode();
+            NavManager.NavigateTo($"artworks/{model.Id}"); //hier kennnen we het Id al
+
+        }
+        else if (Model is Kunstwerk_DTO.Create)
+        {
+            //API call "POST"
+            var response = await httpClient.PostAsJsonAsync<Kunstwerk_DTO.Create>($"api/kunstwerk", Model);
+            response.EnsureSuccessStatusCode();
+            int artworkId = await response.Content.ReadFromJsonAsync<int>(); //hier geeft de server het Id mee
+            NavManager.NavigateTo($"artworks/{artworkId}");
+        }
+        else
+        {
+            //Error
+        }
+    }
+
+    private async Task OnInputFileChange(InputFileChangeEventArgs e)
+    {
+
+        foreach (var file in e.GetMultipleFiles())
+        {
+            Model.Fotos.Add(new() { Pad = file.Name });
+        }
+    }
+
+    private void RemoveImage(Foto_DTO foto)
+    {
+        Model.Fotos.Remove(foto);
+    }
+
+}
